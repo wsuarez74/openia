@@ -1,8 +1,10 @@
+import os
+import openai
 import database
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-from typing import Optional
+from typing import Any, Optional
 
 async def human_query_to_sql(human_query: str):
 
@@ -31,6 +33,33 @@ async def human_query_to_sql(human_query: str):
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
         ],
+    )
+
+    return response.choices[0].message.content
+
+async def build_answer(result: list[dict[str, Any]], human_query: str) -> str | None:
+
+    # Obtenemos el esquema de la base de datos
+    #database_schema = database.get_schema()
+
+    system_message = f"""
+    Given a users question and the SQL rows response from the database from which the user wants to get the answer,
+    write a response to the user's question.
+    <user_question>
+    {human_query}
+    </user_question>
+    <sql_response>
+    ${result}
+    </sql_response>
+    """
+
+
+    # Enviamos el esquema completo con la consulta al LLM
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_message},
+        ],max_tokens=4000,
     )
 
     return response.choices[0].message.content
